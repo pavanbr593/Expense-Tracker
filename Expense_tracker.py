@@ -5,14 +5,21 @@ import os
 # Load the existing expenses from CSV
 def load_expenses():
     if os.path.exists("expenses.csv"):
-        return pd.read_csv("expenses.csv")
+        expenses = pd.read_csv("expenses.csv")
+        # Convert 'Amount' to numeric (float) in case it is loaded as a string
+        expenses["Amount"] = pd.to_numeric(expenses["Amount"], errors="coerce")
+        expenses["Date"] = pd.to_datetime(expenses["Date"], errors="coerce")  # Convert Date to datetime
+        return expenses
     else:
         return pd.DataFrame(columns=["Description", "Amount", "Date"])
 
 # Save new expenses to CSV
 def save_expense(description, amount, date):
     new_data = pd.DataFrame([[description, amount, date]], columns=["Description", "Amount", "Date"])
-    new_data.to_csv("expenses.csv", mode='a', header=False, index=False)
+    if os.path.exists("expenses.csv"):
+        new_data.to_csv("expenses.csv", mode='a', header=False, index=False)
+    else:
+        new_data.to_csv("expenses.csv", mode='w', index=False)
 
 # Remove expense and update CSV
 def remove_expense(index):
@@ -26,16 +33,15 @@ def filter_expenses(expenses, description_filter, amount_filter, date_range):
     
     # Filter by description
     if description_filter:
-        filtered_expenses = filtered_expenses[filtered_expenses['Description'].str.contains(description_filter, case=False)]
+        filtered_expenses = filtered_expenses[filtered_expenses['Description'].str.contains(description_filter, case=False, na=False)]
     
     # Filter by amount
-    if amount_filter:
+    if amount_filter > 0:
         filtered_expenses = filtered_expenses[filtered_expenses['Amount'] <= amount_filter]
     
     # Filter by date range
     if date_range:
         start_date, end_date = date_range
-        filtered_expenses['Date'] = pd.to_datetime(filtered_expenses['Date'])
         filtered_expenses = filtered_expenses[(filtered_expenses['Date'] >= pd.to_datetime(start_date)) & 
                                               (filtered_expenses['Date'] <= pd.to_datetime(end_date))]
 
