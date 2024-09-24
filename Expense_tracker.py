@@ -14,6 +14,33 @@ def save_expense(description, amount, date):
     new_data = pd.DataFrame([[description, amount, date]], columns=["Description", "Amount", "Date"])
     new_data.to_csv("expenses.csv", mode='a', header=False, index=False)
 
+# Remove expense and update CSV
+def remove_expense(index):
+    expenses = load_expenses()
+    expenses = expenses.drop(index)
+    expenses.to_csv("expenses.csv", index=False)
+
+# Filter expenses
+def filter_expenses(expenses, description_filter, amount_filter, date_range):
+    filtered_expenses = expenses
+    
+    # Filter by description
+    if description_filter:
+        filtered_expenses = filtered_expenses[filtered_expenses['Description'].str.contains(description_filter, case=False)]
+    
+    # Filter by amount
+    if amount_filter:
+        filtered_expenses = filtered_expenses[filtered_expenses['Amount'] <= amount_filter]
+    
+    # Filter by date range
+    if date_range:
+        start_date, end_date = date_range
+        filtered_expenses['Date'] = pd.to_datetime(filtered_expenses['Date'])
+        filtered_expenses = filtered_expenses[(filtered_expenses['Date'] >= pd.to_datetime(start_date)) & 
+                                              (filtered_expenses['Date'] <= pd.to_datetime(end_date))]
+
+    return filtered_expenses
+
 # Main Streamlit App
 def main():
     st.title("Expense Tracker")
@@ -23,7 +50,16 @@ def main():
 
     # Display the expenses table
     st.header("Current Expenses")
-    st.dataframe(expenses)
+    if not expenses.empty:
+        st.dataframe(expenses)
+        selected_expense = st.selectbox("Select an expense to remove", expenses.index)
+        if st.button("Remove Expense"):
+            remove_expense(selected_expense)
+            st.success("Expense removed successfully!")
+            expenses = load_expenses()
+            st.dataframe(expenses)
+    else:
+        st.write("No expenses found.")
 
     st.subheader("Add New Expense")
     description = st.text_input("Description")
@@ -36,10 +72,18 @@ def main():
             st.success(f"Added {description} - {amount} on {date}")
         else:
             st.error("Please enter a valid description and amount.")
+        expenses = load_expenses()
+        st.dataframe(expenses)
 
-    # Reload the updated expenses
-    expenses = load_expenses()
-    st.dataframe(expenses)
+    st.subheader("Filter Expenses")
+    description_filter = st.text_input("Filter by Description")
+    amount_filter = st.number_input("Filter by Maximum Amount", min_value=0.0, format="%.2f")
+    date_range = st.date_input("Filter by Date Range", [])
+
+    if st.button("Apply Filter"):
+        filtered_expenses = filter_expenses(expenses, description_filter, amount_filter, date_range)
+        st.write(f"Filtered Expenses:")
+        st.dataframe(filtered_expenses)
 
 if __name__ == "__main__":
     main()
