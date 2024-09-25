@@ -6,9 +6,8 @@ import os
 def load_expenses():
     if os.path.exists("expenses.csv"):
         expenses = pd.read_csv("expenses.csv")
-        # Convert 'Amount' to numeric (float) in case it is loaded as a string
-        expenses["Amount"] = pd.to_numeric(expenses["Amount"], errors="coerce")
-        expenses["Date"] = pd.to_datetime(expenses["Date"], errors="coerce")  # Convert Date to datetime
+        expenses["Amount"] = pd.to_numeric(expenses["Amount"], errors="coerce")  # Convert 'Amount' to numeric
+        expenses["Date"] = pd.to_datetime(expenses["Date"], errors="coerce")  # Convert 'Date' to datetime
         return expenses
     else:
         return pd.DataFrame(columns=["Description", "Amount", "Date"])
@@ -29,7 +28,7 @@ def remove_expense(index):
 
 # Filter expenses
 def filter_expenses(expenses, description_filter, amount_filter, date_range):
-    filtered_expenses = expenses
+    filtered_expenses = expenses.copy()
     
     # Filter by description
     if description_filter:
@@ -40,10 +39,12 @@ def filter_expenses(expenses, description_filter, amount_filter, date_range):
         filtered_expenses = filtered_expenses[filtered_expenses['Amount'] <= amount_filter]
     
     # Filter by date range
-    if date_range:
+    if date_range and len(date_range) == 2:
         start_date, end_date = date_range
-        filtered_expenses = filtered_expenses[(filtered_expenses['Date'] >= pd.to_datetime(start_date)) & 
-                                              (filtered_expenses['Date'] <= pd.to_datetime(end_date))]
+        filtered_expenses = filtered_expenses[
+            (filtered_expenses['Date'] >= pd.to_datetime(start_date)) &
+            (filtered_expenses['Date'] <= pd.to_datetime(end_date))
+        ]
 
     return filtered_expenses
 
@@ -73,13 +74,13 @@ def main():
     date = st.date_input("Date")
 
     if st.button("Add Expense"):
-        if description and amount:
+        if description and amount > 0:
             save_expense(description, amount, date)
-            st.success(f"Added {description} - {amount} on {date}")
+            st.success(f"Added: {description} - {amount} on {date}")
+            expenses = load_expenses()
+            st.dataframe(expenses)
         else:
             st.error("Please enter a valid description and amount.")
-        expenses = load_expenses()
-        st.dataframe(expenses)
 
     st.subheader("Filter Expenses")
     description_filter = st.text_input("Filter by Description")
